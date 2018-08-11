@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/sarunask/s3-copy/logging"
@@ -15,7 +16,13 @@ import (
 const MaxWorkersCount = 100
 
 func (c *Config) validatePath() {
-	_, err := os.Stat(c.Path)
+	var err error
+	c.Path, err = filepath.Abs(c.Path)
+	if err != nil {
+		log.Fatalf("[%s] Path '%s' is not valid dir or file.",
+			logging.ERROR, c.Path)
+	}
+	_, err = os.Stat(c.Path)
 	if err != nil {
 		log.Fatalf("[%s] Path '%s' is not valid dir or file.",
 			logging.ERROR, c.Path)
