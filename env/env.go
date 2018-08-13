@@ -17,11 +17,7 @@ const MaxWorkersCount = 100
 
 func (c *Config) validatePath() {
 	var err error
-	c.Path, err = filepath.Abs(c.Path)
-	if err != nil {
-		log.Fatalf("[%s] Path '%s' is not valid dir or file.",
-			logging.ERROR, c.Path)
-	}
+	c.Path = filepath.Clean(c.Path)
 	_, err = os.Stat(c.Path)
 	if err != nil {
 		log.Fatalf("[%s] Path '%s' is not valid dir or file.",
