@@ -3,6 +3,7 @@ package copy
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface"
 
@@ -43,7 +44,7 @@ func (u *Uploader) AddFileToS3(filename string) error {
 	// Upload the file to S3.
 	result, err := u.Client.Upload(&s3manager.UploadInput{
 		Bucket:               aws.String(u.S3Bucket),
-		Key:                  aws.String(filename),
+		Key:                  aws.String(filepath.ToSlash(filename)),
 		SSECustomerAlgorithm: aws.String(u.S3SSEC),
 		SSECustomerKey:       aws.String(u.S3SSECKey),
 		Body:                 f,
