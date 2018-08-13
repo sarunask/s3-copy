@@ -81,7 +81,7 @@ func main() {
 
 	fileList := make(chan string)
 	exit := make(chan int)
-	go walker.Walk(env.Settings.Path, fileList, env.Settings.Exclude)
+	go walker.Walk(env.Settings.Path, fileList, env.Settings.Exclude, env.Settings.NewerThan)
 	go uploadAll(fileList, exit)
 	<-exit
 }
