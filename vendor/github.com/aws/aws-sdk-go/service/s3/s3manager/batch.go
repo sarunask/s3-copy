@@ -112,6 +112,7 @@ type BatchDeleteIterator interface {
 // iterate through a list of objects and delete the objects.
 //
 // Example:
+//
 //	iter := &s3manager.DeleteListIterator{
 //		Client: svc,
 //		Input: &s3.ListObjectsInput{
@@ -203,6 +204,7 @@ type BatchDelete struct {
 // objects.
 //
 // Example:
+//
 //	batcher := s3manager.NewBatchDeleteWithClient(client, size)
 //
 //	objects := []BatchDeleteObject{
@@ -236,6 +238,7 @@ func NewBatchDeleteWithClient(client s3iface.S3API, options ...func(*BatchDelete
 // objects.
 //
 // Example:
+//
 //	batcher := s3manager.NewBatchDelete(sess, size)
 //
 //	objects := []BatchDeleteObject{
@@ -273,7 +276,7 @@ type DeleteObjectsIterator struct {
 	inc     bool
 }
 
-// Next will increment the default iterator's index and and ensure that there
+// Next will increment the default iterator's index and ensure that there
 // is another object to iterator to.
 func (iter *DeleteObjectsIterator) Next() bool {
 	if iter.inc {
@@ -458,7 +461,7 @@ type DownloadObjectsIterator struct {
 	inc     bool
 }
 
-// Next will increment the default iterator's index and and ensure that there
+// Next will increment the default iterator's index and ensure that there
 // is another object to iterator to.
 func (batcher *DownloadObjectsIterator) Next() bool {
 	if batcher.inc {
@@ -497,7 +500,7 @@ type UploadObjectsIterator struct {
 	inc     bool
 }
 
-// Next will increment the default iterator's index and and ensure that there
+// Next will increment the default iterator's index and ensure that there
 // is another object to iterator to.
 func (batcher *UploadObjectsIterator) Next() bool {
 	if batcher.inc {
