@@ -1,9 +1,13 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -12,27 +16,17 @@ import (
 	"github.com/sarunask/s3-copy/internal/walker"
 
 	"github.com/sarunask/s3-copy/internal/env"
-	"github.com/sarunask/s3-copy/internal/logging"
-
-	"github.com/hashicorp/logutils"
 )
 
-var wg sync.WaitGroup
-
-func uploadOne(up *copy.Uploader, filePath string) {
+func uploadOne(
+	file walker.SrcDest,
+	results chan<- walker.SrcDest,
+	wg *sync.WaitGroup,
+) {
 	defer wg.Done()
 	if env.Settings.DryRun {
 		return
 	}
-	err := up.AddFileToS3(filePath)
-	if err != nil {
-		log.Printf("[%s] Error uploading '%s': %v",
-			logging.ERROR, filePath, err)
-	}
-}
-
-func uploadAll(filesList chan string, exit chan int) {
-	defer close(exit)
 	var logLevel aws.LogLevelType
 	if env.Settings.DebugHTTP {
 		logLevel = aws.LogDebugWithHTTPBody
@@ -44,44 +38,118 @@ func uploadAll(filesList chan string, exit chan int) {
 	}))
 
 	// Create an uploader with the session and default options
-	uploader := copy.Uploader{
+	up := copy.Uploader{
 		Client:    s3manager.NewUploader(sess),
 		S3Bucket:  env.Settings.S3Bucket,
 		S3SSEC:    env.Settings.S3SSEC,
 		S3SSECKey: env.Settings.S3SSECKey,
 	}
 
+	// actually copy files to s3
+	err := up.AddFileToS3(file)
+	if err != nil {
+		// add error to results
+		file.Error = fmt.Errorf("error uploading %s: %w",
+			file.SourceFile, err)
+	}
+	// we send to results channel file with error or without as success
+	results <- file
+}
+
+func uploadAll(
+	filesList chan walker.SrcDest,
+	results chan walker.SrcDest,
+) {
+	defer close(results)
+
+	var wg sync.WaitGroup
 	goRoutinesCount := 0
 	for filePath := range filesList {
 		wg.Add(1)
 		goRoutinesCount++
-		log.Printf("[%s] %d Starting upload of '%s'",
-			logging.DEBUG, goRoutinesCount, filePath)
-		go uploadOne(&uploader, filePath)
+		log.Debugf("%d starting upload of '%#v'",
+			goRoutinesCount, filePath)
+		// add go routine to upload file
+		go uploadOne(filePath, results, &wg)
 		if goRoutinesCount%env.Settings.WorkersCount == 0 {
 			goRoutinesCount = 0
-			log.Printf("[%s] Waiting for some goroutines to stop", logging.WARN)
+			log.Warnf("waiting for some goroutines to stop")
 			wg.Wait()
 		}
 	}
 	wg.Wait()
 }
 
-func main() {
-	// Setting log filters to filter messages
-	filter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{logging.DEBUG, logging.WARN, logging.ERROR},
-		MinLevel: logutils.LogLevel(logging.WARN),
-		Writer:   os.Stderr,
+// closeFile will close file or report error
+func closeFile(f *os.File) {
+	err := f.Close()
+	if err != nil {
+		log.Debugf("error closing %s: %v", f.Name(), err)
 	}
-	if env.Settings.Debug {
-		filter.MinLevel = logging.DEBUG
-	}
-	log.SetOutput(filter)
+}
 
-	fileList := make(chan string)
-	exit := make(chan int)
-	go walker.Walk(env.Settings.Path, fileList, env.Settings.Exclude, env.Settings.NewerThan)
-	go uploadAll(fileList, exit)
+// openFile will open file for fName and will return file handler or exit with fatal error
+func openFile(fName string) *os.File {
+	f, err := os.OpenFile(fName, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("can't write to output %s: %v", fName, err)
+	}
+	return f
+}
+
+// writeOutput will write output CSV files with results of file upload
+func writeOutput(
+	results chan walker.SrcDest,
+	exit chan struct{},
+) {
+	// create 2 files to output results
+	success := openFile(env.Settings.OutputSuccessFile)
+	defer closeFile(success)
+	failure := openFile(env.Settings.OutputFailureFile)
+	defer closeFile(failure)
+	// wait for new record to add or for exit
+	for res := range results {
+		out := success
+		if res.Error != nil {
+			out = failure
+		}
+		log.Debugf("writing {%s} to %s",
+			fmt.Sprintf("%s,%s,%s,%d\n", res.SourceFile, res.DstObject, res.SourceSha256, res.SourceSize),
+			out.Name())
+		_, err := out.WriteString(fmt.Sprintf("%s,%s,%s,%d\n", res.SourceFile, res.DstObject, res.SourceSha256, res.SourceSize))
+		if err != nil {
+			log.Errorf("can't write to %s: %v", out.Name(), err)
+		}
+	}
+	// we exit only after we write all our files
+	close(exit)
+}
+
+func main() {
+	// Use more CPU's when available
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	// Setting log filters to filter messages
+	// Initialize logger
+	log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.TextFormatter{})
+	log.SetLevel(log.InfoLevel)
+
+	if env.Settings.Debug {
+		log.SetLevel(log.DebugLevel)
+	}
+
+	fileList := make(chan walker.SrcDest)
+	results := make(chan walker.SrcDest)
+	// exit is closed by last go routine when it's finnished
+	exit := make(chan struct{})
+	if len(strings.Trim(env.Settings.InputCSVfile, "\n\r\t ")) != 0 {
+		go walker.UseCSVFile(env.Settings.InputCSVfile, fileList)
+	} else {
+		go walker.Walk(env.Settings.Path, fileList, env.Settings.Exclude, env.Settings.NewerThan)
+	}
+	go uploadAll(fileList, results)
+	go writeOutput(results, exit)
 	<-exit
+	log.Debugf("done - exiting")
 }
