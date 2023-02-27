@@ -54,6 +54,6 @@ local_build:
 deps:
 	go mod vendor
 
-.PHONY: unit_test
-unit_test:
+.PHONY: test
+test:
 	go test -v -parallel=6 -mod=vendor -cover $$(go list ./...)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager/s3manageriface"
+	"github.com/sarunask/s3-copy/internal/walker"
 )
 
 type mockS3Manager struct {
@@ -39,7 +40,10 @@ func TestAddFileToS3(t *testing.T) {
 			S3SSEC:    "AES256",
 			S3SSECKey: fmt.Sprintf("czn8qrbUsT/5y5Hr2i93ImWmIQLCZ1%0d", i),
 		}
-		err := u.AddFileToS3("./copy.go")
+		err := u.AddFileToS3(walker.SrcDest{
+			SourceFile: "./copy.go",
+			DstObject:  "./copy.go",
+		})
 		if err != nil {
 			t.Fatalf("%d, unexpected error", err)
 		}

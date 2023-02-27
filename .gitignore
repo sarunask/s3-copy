@@ -17,3 +17,6 @@ s3-copy
 # No MS Code files
 .vscode
 artifacts
+test
+*.csv
+__debug_bin
