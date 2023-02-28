@@ -15,9 +15,8 @@ define build_target
 	GOARCH=$(2) \
 	go build \
 	-mod=vendor \
-	-ldflags="-s -w \
-	-X github.com/90poe/xo/internal/version.Version=$(version)" \
-	-o $(ARTIFACTS_DIR)/xo-$(1)-$(2) \
+	-ldflags="-s -w "\
+	-o $(ARTIFACTS_DIR)/s3-copy-$(1)-$(2) \
 	./cmd ;
 endef
 
