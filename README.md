@@ -9,6 +9,11 @@ go get github.com/sarunask/s3-copy
 
 ## Usage
 
+You will need setup your AWS access first. Please do one of the bellow:
+1. If you run on EC2 instance with IAM role, nothing is required to do
+1. If you run on your own PC, please setup ~/.aws/ with `aws configure` command
+1. You can export 2 env variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` which will grant you access to AWS
+
 Dry run, with debug, nothing uploaded. You could check if exclude works as expected.
 ```bash
 ./s3-copy --path ~/Music/ --s3-bucket=ssss --dry-run --debug --sse-c-key 45123qwefawdfgddddadfqwefgqwegdd --exclude '.*\.mp4' --workers 50
