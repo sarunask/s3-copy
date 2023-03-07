@@ -98,10 +98,6 @@ func UseCSVFile(csvPath string, filesChan chan<- SrcDest) {
 			log.Debugf("found empty record on line %v", i+1)
 			continue
 		}
-		if len(rec[0]) == 0 && len(rec[1]) == 0 {
-			log.Errorf("found empty record on line %v", i+1)
-			continue
-		}
 
 		filePath, err := filepath.Abs(rec[0])
 		if err != nil {
@@ -136,5 +132,6 @@ func getSizeAndSum(filePath string) (string, uint64, error) {
 	if _, err := io.CopyBuffer(h, f, buf); err != nil {
 		return "", 0, fmt.Errorf("can't calculate sum for %s: %w", filePath, err)
 	}
+	log.Debugf("%s size=%d sum256=%s", filePath, info.Size(), fmt.Sprintf("%x", h.Sum(nil)))
 	return fmt.Sprintf("%x", h.Sum(nil)), uint64(info.Size()), nil
 }
