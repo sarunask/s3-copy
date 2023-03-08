@@ -56,15 +56,21 @@ func need2SkipOlderThan(pathToCheck string, newerThan time.Time) bool {
 
 // Walk would recursivly get all files (except but excluded)
 // And would write files path to fileChan channel
-func Walk(walkPath string, filesChan chan<- SrcDest, excludes *[]string, newerThan time.Time) {
+func Walk(walkPath string, filesChan chan<- SrcDest, errors chan<- SrcDest, excludes *[]string, newerThan time.Time) {
 	defer close(filesChan)
-	err := filepath.Walk(walkPath, func(path string, f os.FileInfo, err error) error {
+	// nolint
+	filepath.Walk(walkPath, func(path string, f os.FileInfo, err error) error {
 		// Only append files which are not dirs and we don't need 2 skip that file
 		if f != nil && !f.IsDir() && !need2skip(path, excludes) && !need2SkipOlderThan(path, newerThan) {
 			log.Debugf("Adding %s to be copied", path)
 			sum, size, err := getSizeAndSum(path)
 			if err != nil {
-				return fmt.Errorf("file on path %s: %v", path, err)
+				errors <- SrcDest{
+					SourceFile: path,
+					DstObject:  path,
+					Error:      fmt.Errorf("file on path %s: %v", path, err),
+				}
+				return err
 			}
 			filesChan <- SrcDest{
 				SourceFile:   path,
@@ -75,13 +81,9 @@ func Walk(walkPath string, filesChan chan<- SrcDest, excludes *[]string, newerTh
 		}
 		return nil
 	})
-	if err != nil {
-		// nolint
-		log.Fatalf("error on walk: %v", err)
-	}
 }
 
-func UseCSVFile(csvPath string, filesChan chan<- SrcDest) {
+func UseCSVFile(csvPath string, filesChan chan<- SrcDest, errors chan<- SrcDest) {
 	defer close(filesChan)
 	f, err := os.Open(csvPath)
 	if err != nil {
@@ -101,12 +103,20 @@ func UseCSVFile(csvPath string, filesChan chan<- SrcDest) {
 
 		filePath, err := filepath.Abs(rec[0])
 		if err != nil {
-			log.Errorf("file on path %s can't be absolutized %v", rec[0], err)
+			errors <- SrcDest{
+				SourceFile: filePath,
+				DstObject:  rec[1],
+				Error:      fmt.Errorf("file on path %s can't be absolutized %w", rec[0], err),
+			}
 			continue
 		}
 		sum, size, err := getSizeAndSum(filePath)
 		if err != nil {
-			log.Errorf("file on path %s: %v", filePath, err)
+			errors <- SrcDest{
+				SourceFile: filePath,
+				DstObject:  rec[1],
+				Error:      err,
+			}
 			continue
 		}
 		filesChan <- SrcDest{

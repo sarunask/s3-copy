@@ -114,9 +114,9 @@ func writeOutput(
 			out = failure
 		}
 		log.Debugf("writing {%s} to %s",
-			fmt.Sprintf("%s,%s,%s,%d\n", res.SourceFile, res.DstObject, res.SourceSha256, res.SourceSize),
+			fmt.Sprintf("%s,%s,%s,%d,%v\n", res.SourceFile, res.DstObject, res.SourceSha256, res.SourceSize, res.Error),
 			out.Name())
-		_, err := out.WriteString(fmt.Sprintf("%s,%s,%s,%d\n", res.SourceFile, res.DstObject, res.SourceSha256, res.SourceSize))
+		_, err := out.WriteString(fmt.Sprintf("%s,%s,%s,%d,%v\n", res.SourceFile, res.DstObject, res.SourceSha256, res.SourceSize, res.Error))
 		if err != nil {
 			log.Errorf("can't write to %s: %v", out.Name(), err)
 		}
@@ -144,9 +144,9 @@ func main() {
 	// exit is closed by last go routine when it's finnished
 	exit := make(chan struct{})
 	if len(strings.Trim(env.Settings.InputCSVfile, "\n\r\t ")) != 0 {
-		go walker.UseCSVFile(env.Settings.InputCSVfile, fileList)
+		go walker.UseCSVFile(env.Settings.InputCSVfile, fileList, results)
 	} else {
-		go walker.Walk(env.Settings.Path, fileList, env.Settings.Exclude, env.Settings.NewerThan)
+		go walker.Walk(env.Settings.Path, fileList, results, env.Settings.Exclude, env.Settings.NewerThan)
 	}
 	go uploadAll(fileList, results)
 	go writeOutput(results, exit)
