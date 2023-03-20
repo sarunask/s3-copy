@@ -29,12 +29,12 @@ jobs:
       - name: Install latest major GO version
         uses: actions/setup-go@v3
         with:
-          go-version: '1.19' # The Go version to download
+          go-version: '1.20' # The Go version to download
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: 'v1.50'
+          version: 'v1.51'
           working-directory: '.'
           args: --allow-parallel-runners -v --timeout 5m
           skip-pkg-cache: true
