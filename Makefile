@@ -3,7 +3,7 @@ ARTIFACTS_DIR := ./artifacts
 OSNAME = $(shell go env GOOS)
 ARCH = $(shell go env GOARCH)
 ARCHS := arm64 amd64
-OSES := linux darwin windows
+OSES := linux darwin
 
 version=$(shell cat version | tr -d '\n')
 
