@@ -72,7 +72,7 @@ type Config struct {
 	S3Region          string
 	S3SSEC            string
 	S3SSECKey         string
-	InputCSVfile      string
+	InputCSVFile      string
 	OutputSuccessFile string
 	OutputFailureFile string
 	Exclude           *[]string
@@ -91,14 +91,14 @@ func init() {
 	sseC := pflag.String("sse-c", "AES256", "encryption type to be used in S3")
 	sseCKey := pflag.String("sse-c-key", "", "encryption key to be used in S3")
 	s3Region := pflag.String("s3-region", "eu-west-1", "S3 region")
-	inputCSVfile := pflag.String("input-csv", "", "CSV file, which containes: source,s3_destination_path. Source can be relative. Destination will be relative to S3 bucket.")
+	inputCSVFile := pflag.String("input-csv", "", "CSV file, which contains: source,s3_destination_path. Source can be relative. Destination will be relative to S3 bucket.")
 	outSuccessFile := pflag.String("out-success", "success.csv", "CSV file, which will have successfully uploaded files")
 	outFailureFile := pflag.String("out-failure", "failure.csv", "CSV file, which will have failed uploaded files")
 	exclude := pflag.StringArray("exclude", nil, "which files to exclude (Regexp match, doesn't work if you provide CSV file to upload)")
 	s3bucket := pflag.String("s3-bucket", "", "S3 bucket where to upload")
 	path := pflag.String("path", ".", "From which path to copy")
-	debug := pflag.Bool("debug", false, "Enable debuging")
-	debugHTTP := pflag.Bool("debug-http", false, "Enable debuging for HTTP requests")
+	debug := pflag.Bool("debug", false, "Enable debugging")
+	debugHTTP := pflag.Bool("debug-http", false, "Enable debugging for HTTP requests")
 	workers := pflag.Int("workers", 5, "Number of workers")
 	dryRun := pflag.Bool("dry-run", false, "Enable dry run - no upload")
 	newerThan := pflag.String("newer-than", "", fmt.Sprintf("Include files with modification time Newer tha this time. Example time format is '%s'.",
@@ -114,7 +114,7 @@ func init() {
 		S3Region:          *s3Region,
 		S3SSEC:            *sseC,
 		S3SSECKey:         *sseCKey,
-		InputCSVfile:      *inputCSVfile,
+		InputCSVFile:      *inputCSVFile,
 		OutputSuccessFile: *outSuccessFile,
 		OutputFailureFile: *outFailureFile,
 		Exclude:           exclude,

@@ -20,3 +20,6 @@ artifacts
 test
 *.csv
 __debug_bin
+
+# No Idea related files
+.idea
