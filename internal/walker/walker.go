@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -110,6 +111,16 @@ func UseCSVFile(csvPath string, filesChan chan<- SrcDest, errors chan<- SrcDest)
 			}
 			continue
 		}
+		filePath, ext, err := prepareFilePath(filePath)
+		if err != nil {
+			errors <- SrcDest{
+				SourceFile: filePath,
+				DstObject:  rec[1],
+				Error:      fmt.Errorf("file on path %s can't be found %w", rec[0], err),
+			}
+			continue
+		}
+		rec[1] = replaceWildcard(rec[1], ext)
 		sum, size, err := getSizeAndSum(filePath)
 		if err != nil {
 			errors <- SrcDest{
@@ -144,4 +155,48 @@ func getSizeAndSum(filePath string) (string, uint64, error) {
 	}
 	log.Debugf("%s size=%d sum256=%s", filePath, info.Size(), fmt.Sprintf("%x", h.Sum(nil)))
 	return fmt.Sprintf("%x", h.Sum(nil)), uint64(info.Size()), nil
+}
+
+func prepareFilePath(filePath string) (string, string, error) {
+	filename, ext := getFileNameAndExtension(filePath)
+	var filePaths []string
+	if ext == "*" {
+		fExt := ""
+		basePath := strings.Split(filePath, filename)[0]
+		dir, err := os.ReadDir(basePath)
+		if err != nil {
+			return "", "", err
+		}
+		for _, dirEntry := range dir {
+			fName, ext := getFileNameAndExtension(dirEntry.Name())
+			if !dirEntry.IsDir() && strings.EqualFold(fName, filename) {
+				if len(fExt) == 0 {
+					fExt = ext
+				}
+				filePaths = append(filePaths, fmt.Sprintf("%s%s", basePath, dirEntry.Name()))
+			}
+		}
+		if len(filePaths) > 1 {
+			log.Infof("multiple files with the same name available by path '%s'", filePath)
+		}
+		if len(filePaths) > 0 { // Even in case of multiple files with the same name return the first one.
+			return filePaths[0], fExt, nil
+		}
+		return "", "", fmt.Errorf("unable to find file with name %s", filename)
+	}
+	return filePath, "", nil
+}
+
+func getFileNameAndExtension(fileName string) (string, string) {
+	if pPos := strings.LastIndexByte(fileName, '.'); pPos != -1 {
+		if sPos := strings.LastIndexByte(fileName, '/'); sPos != -1 {
+			return fileName[sPos+1 : pPos], fileName[pPos+1:]
+		}
+		return fileName[:pPos], fileName[pPos+1:]
+	}
+	return fileName, ""
+}
+
+func replaceWildcard(fileName, ext string) string {
+	return strings.Replace(fileName, "*", ext, 1)
 }

@@ -141,10 +141,10 @@ func main() {
 
 	fileList := make(chan walker.SrcDest)
 	results := make(chan walker.SrcDest)
-	// exit is closed by last go routine when it's finnished
+	// exit is closed by last go routine when it's finished
 	exit := make(chan struct{})
-	if len(strings.Trim(env.Settings.InputCSVfile, "\n\r\t ")) != 0 {
-		go walker.UseCSVFile(env.Settings.InputCSVfile, fileList, results)
+	if len(strings.Trim(env.Settings.InputCSVFile, "\n\r\t ")) != 0 {
+		go walker.UseCSVFile(env.Settings.InputCSVFile, fileList, results)
 	} else {
 		go walker.Walk(env.Settings.Path, fileList, results, env.Settings.Exclude, env.Settings.NewerThan)
 	}

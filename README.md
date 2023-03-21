@@ -29,3 +29,9 @@ CSV file format `localFileName,s3ObjectNameWithPath`:
 ../test/file1.bin,/customers/gu/upload/fileUp1.bin
 ../test/file2.bin,/customers/gu/upload/fileUp2.bin
 ```
+
+CSV file supports a wildcard in the file name. In case of multiple entry the first (alphabetically) file will be used
+```csv
+../test/file1.*,/customers/gu/upload/file1.*
+../test/file2.bin,/customers/gu/upload/fileUp2.bin
+```
