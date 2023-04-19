@@ -24,37 +24,6 @@ type (
 	}
 )
 
-func need2skip(pathToCheck string, excludes *[]string) bool {
-	// Skip all files, which have such words in them
-	for _, exclude := range *excludes {
-		matched, err := regexp.MatchString(exclude, pathToCheck)
-		if err != nil {
-			log.Fatalf("bad exclude regexp pattern '%s': %v", exclude, err)
-			continue
-		}
-		if matched {
-			log.Debugf("Skipping %s", pathToCheck)
-			return true
-		}
-	}
-	return false
-}
-
-func need2SkipOlderThan(pathToCheck string, newerThan time.Time) bool {
-	stat, err := os.Stat(pathToCheck)
-	if err != nil {
-		// If we can't get Stat on file - skip it
-		log.Fatalf("can't get stat for %s: %v", pathToCheck, err)
-		return true
-	}
-	before := stat.ModTime().Before(newerThan)
-	if before {
-		log.Debugf("skipping file as it's mod time %v is before %v",
-			stat.ModTime(), newerThan)
-	}
-	return before
-}
-
 // Walk would recursivly get all files (except but excluded)
 // And would write files path to fileChan channel
 func Walk(walkPath string, filesChan chan<- SrcDest, errors chan<- SrcDest, excludes *[]string, newerThan time.Time) {
@@ -84,7 +53,7 @@ func Walk(walkPath string, filesChan chan<- SrcDest, errors chan<- SrcDest, excl
 	})
 }
 
-func UseCSVFile(csvPath string, filesChan chan<- SrcDest, errors chan<- SrcDest) {
+func UseCSVFile(csvPath string, filesChan chan<- SrcDest, errors chan<- SrcDest, newerThan time.Time) {
 	defer close(filesChan)
 	f, err := os.Open(csvPath)
 	if err != nil {
@@ -128,6 +97,10 @@ func UseCSVFile(csvPath string, filesChan chan<- SrcDest, errors chan<- SrcDest)
 				DstObject:  rec[1],
 				Error:      err,
 			}
+			continue
+		}
+		if need2SkipOlderThan(filePath, newerThan) {
+			// we need to skip this file, because it's older than we require
 			continue
 		}
 		filesChan <- SrcDest{
@@ -199,4 +172,35 @@ func getFileNameAndExtension(fileName string) (string, string) {
 
 func replaceWildcard(fileName, ext string) string {
 	return strings.Replace(fileName, "*", ext, 1)
+}
+
+func need2skip(pathToCheck string, excludes *[]string) bool {
+	// Skip all files, which have such words in them
+	for _, exclude := range *excludes {
+		matched, err := regexp.MatchString(exclude, pathToCheck)
+		if err != nil {
+			log.Fatalf("bad exclude regexp pattern '%s': %v", exclude, err)
+			continue
+		}
+		if matched {
+			log.Debugf("Skipping %s", pathToCheck)
+			return true
+		}
+	}
+	return false
+}
+
+func need2SkipOlderThan(pathToCheck string, newerThan time.Time) bool {
+	stat, err := os.Stat(pathToCheck)
+	if err != nil {
+		// If we can't get Stat on file - skip it
+		log.Fatalf("can't get stat for %s: %v", pathToCheck, err)
+		return true
+	}
+	before := stat.ModTime().Before(newerThan)
+	if before {
+		log.Debugf("skipping file as it's mod time %v is before %v",
+			stat.ModTime(), newerThan)
+	}
+	return before
 }
