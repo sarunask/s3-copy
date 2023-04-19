@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -80,6 +81,7 @@ func TestUseCSVFile(t *testing.T) {
 		data          []byte
 		fileDetails   SrcDest
 		resultDetails SrcDest
+		newerThan     time.Time
 	}{
 		{
 			name:     "Positive Case",
@@ -109,12 +111,26 @@ func TestUseCSVFile(t *testing.T) {
 			},
 		},
 		{
-			name:     "Wildcard Case",
+			name:     "Negative Time Case",
 			fileName: "testFile3.txt",
 			dirName:  "testFiles3",
-			data:     []byte("./testFiles3/test1.*,/customers/gu/upload/test1.*"),
+			data:     []byte("./testFiles3/test1.txt,/customers/gu/upload/test1.txt"),
+			resultDetails: SrcDest{
+				SourceFile:   fmt.Sprintf("%s/testFiles3/test1.txt", path),
+				SourceSha256: "",
+				SourceSize:   0,
+				DstObject:    "/customers/gu/upload/test1.txt",
+				Error:        fmt.Errorf("no such file or directory"),
+			},
+			newerThan: time.Now(),
+		},
+		{
+			name:     "Wildcard Case",
+			fileName: "testFile3.txt",
+			dirName:  "testFiles4",
+			data:     []byte("./testFiles4/test1.*,/customers/gu/upload/test1.*"),
 			fileDetails: SrcDest{
-				SourceFile:   fmt.Sprintf("%s/testFiles3/test1.tsv", path),
+				SourceFile:   fmt.Sprintf("%s/testFiles4/test1.tsv", path),
 				SourceSha256: "d56ddee7d0fe47470cc19775dbe3ebc01b80bfee1f917b7fe3796b5ce7fb3d16",
 				SourceSize:   0x12,
 				DstObject:    "/customers/gu/upload/test1.tsv",
@@ -134,7 +150,7 @@ func TestUseCSVFile(t *testing.T) {
 			tearDown := setupTest(t, tc.dirName, tc.fileName, tc.data)
 			defer tearDown(t)
 
-			go UseCSVFile(getPath(tc.dirName, tc.fileName), fileList, results)
+			go UseCSVFile(getPath(tc.dirName, tc.fileName), fileList, results, tc.newerThan)
 			for {
 				select {
 				case r := <-results:
@@ -257,6 +273,12 @@ func setupTest(t *testing.T, dirName, fileName string, data []byte) func(t *test
 	assert.NoError(t, os.WriteFile(getPath(dirName, tsvFile), testData, fs.ModePerm))
 	assert.NoError(t, os.WriteFile(getPath(dirName, txtFile), testData, fs.ModePerm))
 
+	mtime := time.Date(2021, time.February, 1, 3, 4, 5, 0, time.UTC)
+	atime := time.Date(2022, time.March, 2, 4, 5, 6, 0, time.UTC)
+
+	assert.NoError(t, os.Chtimes(getPath(dirName, fileName), atime, mtime))
+	assert.NoError(t, os.Chtimes(getPath(dirName, tsvFile), atime, mtime))
+	assert.NoError(t, os.Chtimes(getPath(dirName, txtFile), atime, mtime))
 	return func(t *testing.T) {
 		assert.NoError(t, os.RemoveAll(fmt.Sprintf("./%s", dirName)))
 	}

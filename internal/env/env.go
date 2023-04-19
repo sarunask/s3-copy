@@ -101,7 +101,7 @@ func init() {
 	debugHTTP := pflag.Bool("debug-http", false, "Enable debugging for HTTP requests")
 	workers := pflag.Int("workers", 5, "Number of workers")
 	dryRun := pflag.Bool("dry-run", false, "Enable dry run - no upload")
-	newerThan := pflag.String("newer-than", "", fmt.Sprintf("Include files with modification time Newer tha this time. Example time format is '%s'.",
+	newerThan := pflag.String("newer-than", "", fmt.Sprintf("Include files with modification time newer than time you provided. Example time format is '%s'.",
 		shortTimeForm))
 	pflag.Parse()
 	if len(*s3bucket) == 0 {
